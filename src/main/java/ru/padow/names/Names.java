@@ -1,14 +1,16 @@
 package ru.padow.names;
 
+import com.mojang.brigadier.Command;
+import com.mojang.brigadier.arguments.StringArgumentType;
+
 import lombok.Getter;
 
 import net.fabricmc.api.DedicatedServerModInitializer;
+import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
+import net.minecraft.command.argument.EntityArgumentType;
+import net.minecraft.server.command.CommandManager;
 import net.minecraft.server.network.ServerPlayerEntity;
-
-import revxrsal.commands.annotation.Command;
-import revxrsal.commands.annotation.Subcommand;
-import revxrsal.commands.fabric.FabricLamp;
-import revxrsal.commands.fabric.actor.FabricCommandActor;
+import net.minecraft.text.Text;
 
 import su.plo.voice.api.server.PlasmoVoiceServer;
 
@@ -20,24 +22,95 @@ public class Names implements DedicatedServerModInitializer {
 
     @Override
     public void onInitializeServer() {
-        FabricLamp.builder().build().register(new Commands());
         PlasmoVoiceServer.getAddonsLoader().load(addon);
-    }
 
-    @Command("name")
-    public class Commands {
-        @Subcommand("set")
-        public void set(FabricCommandActor actor, ServerPlayerEntity target, String name) {
-            config.players.put(target.getUuid(), name);
-            config.save();
-            actor.reply("Done, the target now has to rejoin the server");
-        }
-
-        @Subcommand("reset")
-        public void reset(FabricCommandActor actor, ServerPlayerEntity target) {
-            config.players.remove(target.getUuid());
-            config.save();
-            actor.reply("Done, the target now has to rejoin the server");
-        }
+        CommandRegistrationCallback.EVENT.register(
+                (dispatcher, registryAccess, environment) -> {
+                    dispatcher.register(
+                            CommandManager.literal("name")
+                                    .requires(source -> source.hasPermissionLevel(4))
+                                    .then(
+                                            CommandManager.literal("set")
+                                                    .then(
+                                                            CommandManager.argument(
+                                                                            "target",
+                                                                            EntityArgumentType
+                                                                                    .player())
+                                                                    .then(
+                                                                            CommandManager.argument(
+                                                                                            "name",
+                                                                                            StringArgumentType
+                                                                                                    .greedyString())
+                                                                                    .executes(
+                                                                                            context -> {
+                                                                                                ServerPlayerEntity
+                                                                                                        target =
+                                                                                                                EntityArgumentType
+                                                                                                                        .getPlayer(
+                                                                                                                                context,
+                                                                                                                                "target");
+                                                                                                String
+                                                                                                        name =
+                                                                                                                StringArgumentType
+                                                                                                                        .getString(
+                                                                                                                                context,
+                                                                                                                                "name");
+                                                                                                config
+                                                                                                        .players
+                                                                                                        .put(
+                                                                                                                target
+                                                                                                                        .getUuid(),
+                                                                                                                name);
+                                                                                                config
+                                                                                                        .save();
+                                                                                                context.getSource()
+                                                                                                        .sendFeedback(
+                                                                                                                () ->
+                                                                                                                        Text
+                                                                                                                                .literal(
+                                                                                                                                        "Done,"
+                                                                                                                                            + " the target"
+                                                                                                                                            + " now has"
+                                                                                                                                            + " to rejoin"
+                                                                                                                                            + " the server"),
+                                                                                                                false);
+                                                                                                return Command
+                                                                                                        .SINGLE_SUCCESS;
+                                                                                            }))))
+                                    .then(
+                                            CommandManager.literal("reset")
+                                                    .then(
+                                                            CommandManager.argument(
+                                                                            "target",
+                                                                            EntityArgumentType
+                                                                                    .player())
+                                                                    .executes(
+                                                                            context -> {
+                                                                                ServerPlayerEntity
+                                                                                        target =
+                                                                                                EntityArgumentType
+                                                                                                        .getPlayer(
+                                                                                                                context,
+                                                                                                                "target");
+                                                                                config.players
+                                                                                        .remove(
+                                                                                                target
+                                                                                                        .getUuid());
+                                                                                config.save();
+                                                                                context.getSource()
+                                                                                        .sendFeedback(
+                                                                                                () ->
+                                                                                                        Text
+                                                                                                                .literal(
+                                                                                                                        "Done,"
+                                                                                                                            + " the target"
+                                                                                                                            + " now has"
+                                                                                                                            + " to rejoin"
+                                                                                                                            + " the server"),
+                                                                                                false);
+                                                                                return Command
+                                                                                        .SINGLE_SUCCESS;
+                                                                            }))));
+                });
     }
 }

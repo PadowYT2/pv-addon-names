@@ -8,7 +8,7 @@
     ],
     "environment": "server",
     "entrypoints": {
-        "main": [
+        "server": [
             "ru.padow.names.Names"
         ]
     },
